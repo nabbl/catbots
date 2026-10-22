@@ -354,7 +354,8 @@ export function loadConfig(
     gemini: {
       apiKey: env.GEMINI_API_KEY?.trim() || "",
       model: str("GEMINI_MODEL", "gemini-4-argon"),
-      timeoutMs: num("GEMINI_TIMEOUT_MS", 3000, 100, 300000),
+      // Argon can take tens of seconds even for a short menu decision.
+      timeoutMs: num("GEMINI_TIMEOUT_MS", 60000, 100, 300000),
       dailyUsdCap: num("GEMINI_DAILY_USD_CAP", 3, 0),
       usdPerMTok: num("GEMINI_USD_PER_MTOK", 4, Number.MIN_VALUE),
       usdPerMTokOut: num("GEMINI_USD_PER_MTOK_OUT", 20, Number.MIN_VALUE),
