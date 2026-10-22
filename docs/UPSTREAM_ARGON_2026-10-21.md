@@ -45,7 +45,7 @@ GEMINI_API_KEY=your-google-key
 GEMINI_MODEL=gemini-4-argon
 GEMINI_DAILY_USD_CAP=3
 GEMINI_MIN_INTERVAL_MS=60000
-GEMINI_TIMEOUT_MS=3000
+GEMINI_TIMEOUT_MS=60000
 GEMINI_USD_PER_MTOK=4
 GEMINI_USD_PER_MTOK_OUT=20
 DRY_RUN=true
@@ -57,9 +57,13 @@ DOCKER_DB_PATH=/data/catfolio-argon-paper.sqlite
 The model name and token prices are upstream defaults, not a claim that this key can
 access that model or that those prices match your invoice. Check Google's current
 [model access](https://ai.google.dev/gemini-api/docs/models) and
-[pricing](https://ai.google.dev/gemini-api/docs/pricing). A paid inference request was
-not made during development. `provider:check` makes a potentially billed request and
+[pricing](https://ai.google.dev/gemini-api/docs/pricing). `provider:check` makes a potentially billed request and
 fails if it gets code fallback instead of a real model answer; it never places an order.
+
+The Gemini request deadline defaults to 60 seconds. The original upstream three-second
+deadline cancelled valid Argon responses before they arrived; a live connection check
+with the longer deadline returned a model answer in about 22 seconds. Independent
+protective checks continue while inference is pending.
 
 Old environment values override the new defaults. In particular, remove or deliberately
 set these entries when taking Argon's rules:

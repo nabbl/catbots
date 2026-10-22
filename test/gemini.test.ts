@@ -25,6 +25,35 @@ describe("Gemini configuration and adapter", () => {
     expect(loadConfig({GEMINI_API_KEY:"key",DECISION_PROVIDER:"jev"}).decisionProvider).toBe("jev");
     expect(config({STRATEGY_ENGINE:"catfolio"}).strategyEngine).toBe("catfolio");
   });
+  it("allows a valid Argon response that takes longer than the former three-second deadline", async () => {
+    vi.useFakeTimers();
+    // Native AbortSignal.timeout uses a real clock; make its deadline advance with the mocked response.
+    const timeout = vi.spyOn(AbortSignal, "timeout").mockImplementation(ms => {
+      const controller = new AbortController();
+      setTimeout(() => controller.abort(new DOMException("deadline exceeded", "TimeoutError")), ms);
+      return controller.signal;
+    });
+    const cfg = config();
+    const fetcher: typeof fetch = async (_url, init) => new Promise<Response>((resolve, reject) => {
+      const timer = setTimeout(() => resolve(response("WAIT")), 22_000);
+      init?.signal?.addEventListener("abort", () => {
+        clearTimeout(timer);
+        reject(init.signal?.reason);
+      }, { once: true });
+    });
+    const p = new Gemini(cfg.gemini, database(), fetcher);
+    try {
+      const pending = p.decide(ask());
+      await vi.advanceTimersByTimeAsync(22_000);
+      expect(await pending).toMatchObject({ok:true, source:"model", decidedBy:"gemini", choice:"WAIT"});
+      expect(p.status()).toMatchObject({connected:true, requests:1, failures:0});
+      expect(config({GEMINI_TIMEOUT_MS:"90000"}).gemini.timeoutMs).toBe(90000);
+    } finally {
+      p.close();
+      timeout.mockRestore();
+      vi.useRealTimers();
+    }
+  });
   it.each(["GEMINI_USD_PER_MTOK","GEMINI_USD_PER_MTOK_OUT"])("rejects invalid %s without echoing the value", field => {
     for (const value of ["0","-1","not-a-price"]) {
       expect(() => config({[field]:value})).toThrow(field);
