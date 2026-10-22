@@ -10,9 +10,9 @@ Gemini's upstream code fallback **can trade** when no key, budget or valid model
 
 **Current hardware verification:** on 2026-10-09 this machine's **LM Studio 0.4.9+1** returned HTTP 200 with `Unexpected endpoint or method. (POST /v1/systemone)`. Installed llama.cpp Metal runtime: **2.13.0**; MLX runtime: **1.10.1**. No model was loaded; only Qwen and an embedding model were downloaded. **This installed combination cannot run this integration. Real Nimble inference has NOT passed.** Update the application **and** select a runtime supporting native decision models, download/load a compatible Nimble artifact, then pass `pnpm local:check`. Merely having a chat server on port 1234 is insufficient. The implementation is tested against a local mock server; there is no chat or cloud fallback.
 
-## Previous Catfolio / LM Studio paper setup
+## Gemini / Argon paper setup
 
-Requires Node **22.13+** (Node 22 LTS recommended), pnpm **10.34.5**, Git, internet access to public OKX market data, and either a compatible local LM Studio installation or the optional Jev setup below. Commands are run from this repository. No exchange account is needed.
+Requires Node **22.13+** (Node 22 LTS recommended), pnpm **10.34.5**, Git, internet access to public OKX market data, and a Google Gemini API key for model decisions. The legacy LM Studio and Jev setups remain available below. Commands are run from this repository. No exchange account is needed.
 
 ```sh
 corepack enable
@@ -22,10 +22,10 @@ cp .env.example .env
 pnpm run setup
 ```
 
-`pnpm run setup` writes `data/catfolio-settings.json` with exactly two editable names/rules and refuses to overwrite an existing file. Defaults also work without this file. Configure the local model as described below. Edit `.env`: at minimum set `LM_STUDIO_MODEL`, and record `LM_STUDIO_VERSION`, `LM_STUDIO_ENGINE`, and `LM_STUDIO_ARTIFACT`. Keep `DRY_RUN=true`, `MODE=paper`, and the $200 total for the first run. Never copy old exchange credentials into this experiment.
+`pnpm run setup` writes `data/catfolio-settings.json` with exactly two editable names/rules and refuses to overwrite an existing file. Defaults also work without this file. In `.env`, set `GEMINI_API_KEY`; the example already selects Gemini/upstream and paper mode. Model, spending, pacing, capital and trading/risk settings come from application defaults. The trainer is **BENCHED**. `COACH_ADMIN_TOKEN` is optional for manual owner controls. If upgrading, keep your existing database path and remove old tuning/provider values to adopt defaults; copying the example does not edit an existing `.env`. Never copy old exchange credentials into this experiment.
 
 ```sh
-pnpm local:check                  # MUST pass choice AND score; read-only, no trading
+pnpm provider:check               # Gemini check; potentially billed, no orders
 pnpm snapshot                     # live public market data and the TWO current menus
 pnpm typecheck
 pnpm lint
@@ -66,7 +66,7 @@ After `paper:stop`, keep the engine running until the dashboard says **Run close
 
 ## Legacy provider choices: LM Studio and Jev
 
-Set **`DECISION_PROVIDER=lmstudio`** (default) or **`DECISION_PROVIDER=jev`** in `.env`, then restart the engine. Exactly one backend serves both cats. The same market snapshots, action menus, ordered rubric, validation, sizing and protective checks apply. An unavailable provider never switches to the other automatically. Choosing Jev sends the decision's market/account snapshot and strategy profile to TypeSafe's hosted API and can incur charges.
+For the previous Catfolio strategies, set **`STRATEGY_ENGINE=catfolio`** and either **`DECISION_PROVIDER=lmstudio`** or **`DECISION_PROVIDER=jev`** in `.env`, then restart the engine. For LM Studio, set `LM_STUDIO_MODEL` to the actual loaded identifier and record `LM_STUDIO_VERSION`, `LM_STUDIO_ENGINE` and `LM_STUDIO_ARTIFACT`. Run `pnpm local:check` to verify that setup. Exactly one backend serves both cats. The same market snapshots, action menus, ordered rubric, validation, sizing and protective checks apply. An unavailable provider never switches to the other automatically. Choosing Jev sends the decision's market/account snapshot and strategy profile to TypeSafe's hosted API and can incur charges.
 
 For Jev, keep `DRY_RUN=true` and `MODE=paper`, and set:
 
@@ -115,6 +115,8 @@ The dashboard labels **Local inference** or **Jev cloud**. Reports include backe
 Jev compatibility is covered by a credential-free mock HTTP server. No paid Jev inference was performed during this implementation; run `pnpm provider:check` with your key to verify it.
 
 ## Strategy trainer
+
+With the default `STRATEGY_ENGINE=upstream`, the dashboard shows **BENCHED** and the trainer performs no reviews or automatic changes. Old enable flags and gateway keys do not reactivate it. The review behavior below applies only to the legacy `STRATEGY_ENGINE=catfolio`.
 
 The trainer schedules reviews through the Vercel AI Gateway at most every four hours per cat. Set `COACH_ENABLED=true` and `AI_GATEWAY_API_KEY`; `COACH_MODEL` selects the review model. **Reviews are advisory by default (`COACH_AUTO_APPLY=false`).** Readiness requires 30 distinct signal-bar observations under version 9, within seven days and since the last applied change/reset. Dark needs roughly 7.5 hours; Good needs roughly five days. Protection pulses, extra profit reviews and repeated observations of one bar do not inflate this count. Closed experiments stop coaching; old or unidentified strategies cannot justify new changes.
 
@@ -214,21 +216,22 @@ Accounts, positions, existing stops, order/fill history and balances survive the
 
 The paper simulator fills the entire requested lot at bid/ask plus **2 bps adverse slippage**, charges **0.05% taker fees** each way, and estimates funding at 00:00/08:00/16:00 UTC using the observed current funding rate. Spread + extra slippage is reported as execution shortfall versus mid and is already reflected in P&L; do not subtract it twice. Contract funding intervals can differ, historical funding across downtime is not backfilled, and there is no order book depth, queue position, partial-fill, liquidation or market impact model. USD settlement is treated as USD; collateral conversion/depeg effects are absent. Protective checks are software checks, not exchange-hosted stop orders. Cash is the collateral ledger, not spot proceeds. Drawdown is measured at observed quotes/fills, not every exchange tick. Do not interpret one profitable night as a durable advantage.
 
-## Docker: bot container, LM Studio on host
+## Docker: paper engine and dashboard
 
 All images build locally; no upstream beebots image is pulled. Compose has a fresh `catfolio-data` volume and **forces PAPER mode** even if `.env` has other mode settings. It keeps the existing Caddy dashboard/reverse proxy and nightly SQLite `.backup` sidecar. The dashboard binds to loopback, port 8088.
 
-1. Complete `.env` and LM Studio setup above.
-2. Set `LM_STUDIO_HOST_ORIGIN=http://host.docker.internal:1234` in `.env`. Inside a container, `127.0.0.1` points to the container. Docker Desktop supplies this hostname; Compose adds `host-gateway` for Linux. LM Studio may need “Serve on Local Network” / a host-reachable bind address; restrict access with the host firewall and use its optional authentication token. Do not expose this port publicly.
-3. Build, test the host connection from the container, then start:
+1. Copy `.env.example` to `.env` for a new installation and set `GEMINI_API_KEY`. Existing installations should retain their database path and remove unwanted overrides.
+2. Build, check the selected provider from the container (potentially billed, no orders), then start:
 
 ```sh
 docker compose build
-docker compose run --rm engine node dist/tools/local-check.js
+docker compose run --rm engine node dist/tools/provider-check.js
 docker compose up -d
 # open http://127.0.0.1:8088
 docker compose logs -f engine
 ```
+
+For legacy LM Studio only, select it in `.env` and set `LM_STUDIO_HOST_ORIGIN` to a host-reachable origin (default `http://host.docker.internal:1234`). A container’s `127.0.0.1` points to itself. Docker Desktop provides the host name; Compose adds `host-gateway` for Linux. Run `node dist/tools/local-check.js` in the engine container to verify the loaded decision model.
 
 Optional local profiles inside the volume:
 

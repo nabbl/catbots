@@ -2,7 +2,7 @@
 
 # Effective configuration and trainer controls
 
-Applies to `catfolio-9-profit-protection`. `.env.example` lists supported settings. Arcane's saved environment is the deployment source; editing a local `.env` does not update Arcane. Deploy the new image before configuring the new exit controls, then restart the engine after environment changes while preserving the database volume and starting allocation. `DRY_RUN=true` / `MODE=paper` keeps execution simulated. The supplied Compose files enforce paper mode. See the [profit-exit implementation and copyable Arcane settings](PROFIT_EXITS_2026-10-19.md), [strategy audit](STRATEGY_REVIEW_2026-10-16.md) and [retrospective comparison](STRATEGY_BACKTEST_2026-10-16.md); no profitable portfolio has been established.
+Applies to `catfolio-9-profit-protection`. `.env.example` is a minimal Gemini/upstream starting point; this document describes optional legacy Catfolio settings. Arcane's saved environment is the deployment source; editing a local `.env` does not update Arcane. Deploy the new image before configuring the new exit controls, then restart the engine after environment changes while preserving the database volume and starting allocation. `DRY_RUN=true` / `MODE=paper` keeps execution simulated. The supplied Compose files enforce paper mode. See the [profit-exit implementation and copyable Arcane settings](PROFIT_EXITS_2026-10-19.md), [strategy audit](STRATEGY_REVIEW_2026-10-16.md) and [retrospective comparison](STRATEGY_BACKTEST_2026-10-16.md); no profitable portfolio has been established.
 
 ## Owner limits and actual sizing
 

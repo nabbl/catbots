@@ -23,11 +23,18 @@ Environment editor using that folder's `.env.example` as the starting point.
 The project uses prebuilt images, DockTail HTTPS, and persistent named volumes;
 it forces paper mode. Local `docker-compose.yml` continues to build locally.
 
-Select either LM Studio with a host reachable from the Arcane server and a loaded
-decision model, or explicitly select Jev and supply its provider key. If using
-LM Studio on another machine, `host.docker.internal` is not that machine: set
-`LM_STUDIO_HOST_ORIGIN` to its reachable address. Consult the main README for
-provider validation and the separate coach approval token.
+The [Argon deployment update](https://github.com/nabbl/gitops-arcane/pull/11)
+selects Gemini/upstream and passes only the Gemini key, optional owner key and
+required paper/container settings to the engine. Set `GEMINI_API_KEY` in Arcane;
+keep `COACH_ADMIN_TOKEN` only if manual owner controls are needed. Model, budget,
+pacing and trading/risk settings use application defaults, and the trainer is
+benched. The GitOps README lists obsolete environment variables that can be
+removed; its allowlist ignores them even if still saved in Arcane. Merge and
+sync that deployment update before relying on the allowlist.
+
+The local `.env.example` is also minimal, but local Compose still loads `.env`
+and permits explicit overrides and legacy providers. Neither example edits an
+existing private environment. Use the GitOps folder's example for Arcane.
 
 New GHCR packages are private by default. Configure `ghcr.io` in Arcane's container
 registries with username `nabbl` and a GitHub classic PAT with `read:packages`, or
@@ -38,10 +45,9 @@ provider credentials.
 For controlled upgrades, update all three image references in the GitOps Compose
 file to the successful build's full source commit SHA (or pin each image by its
 digest), then sync and redeploy through Arcane.
-The optional `CATFOLIO_IMAGE_TAG=edge` override follows main when images are pulled;
-a mutable tag changing alone does not change the Git Compose file or trigger Git
-Sync. Keep the database volume through upgrades and do not run two engines against
-the same database.
+The Argon deployment update pins versions directly in Compose and ignores the
+former `CATFOLIO_IMAGE_TAG` override. Keep the database volume through upgrades
+and do not run two engines against the same database.
 
 References: [Arcane Git Sync](https://getarcane.app/docs/docker/git-sync) and
 [GHCR authentication](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry).
